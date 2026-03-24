@@ -1,5 +1,6 @@
 // API Endpoint Sabitleri
-export const BASE_URL = 'http://192.168.1.45:8080/api'; // Yerel IP: Fiziksel iOS/Android cihazlar için
+export const BASE_URL =
+    process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.45:8080/api'; // Yerel IP fallback
 
 export const ENDPOINTS = {
     // Auth

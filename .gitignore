@@ -37,3 +37,8 @@ buildNumber.properties
 *.tmp
 *.bak
 *~
+
+# Environment files
+*.env
+*.env.*
+!.env.example
