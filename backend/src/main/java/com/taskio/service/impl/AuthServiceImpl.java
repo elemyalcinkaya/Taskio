@@ -36,9 +36,9 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         userRepository.save(user);
 
-        // TODO: gerçek JWT token üretimi
+        // TODO: gerçek JWT token üretimi — şimdilik user-id bazlı geçici token
         return AuthResponse.builder()
-                .token("jwt-token-placeholder")
+                .token("user-" + user.getId())
                 .user(mapToUserResponse(user))
                 .build();
     }
@@ -52,9 +52,9 @@ public class AuthServiceImpl implements AuthService {
             throw new BadRequestException("Geçersiz e-posta veya şifre.");
         }
 
-        // TODO: gerçek JWT token üretimi
+        // TODO: gerçek JWT token üretimi — şimdilik user-id bazlı geçici token
         return AuthResponse.builder()
-                .token("jwt-token-placeholder")
+                .token("user-" + user.getId())
                 .user(mapToUserResponse(user))
                 .build();
     }

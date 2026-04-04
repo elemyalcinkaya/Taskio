@@ -14,12 +14,15 @@ const BoardDetailScreen = ({ route, navigation }) => {
     const [board, setBoard] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadBoardData();
     }, [boardId]);
 
     const loadBoardData = async () => {
+        setError(null);
+        setLoading(true);
         try {
             const [boardData, taskData] = await Promise.all([
                 boardService.getBoard(boardId),
@@ -27,8 +30,10 @@ const BoardDetailScreen = ({ route, navigation }) => {
             ]);
             setBoard(boardData);
             setTasks(taskData);
-        } catch (error) {
-            console.error('Board detail error:', error);
+        } catch (err) {
+            console.error('Board detail error:', err);
+            const msg = err.response?.data?.message || err.message || 'Pano veya görevler yüklenemedi.';
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -56,6 +61,15 @@ const BoardDetailScreen = ({ route, navigation }) => {
                 <Text style={styles.statText}>{tasks.length} görev toplam</Text>
                 <Text style={styles.statText}>{getTasksByStatus('Done').length} tamamlandı</Text>
             </View>
+
+            {error && (
+                <View style={styles.errorBanner}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity onPress={loadBoardData}>
+                        <Text style={styles.retryText}>Tekrar dene</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {loading ? (
                 <ActivityIndicator size="large" color={COLORS.primary} style={{ flex: 1 }} />
@@ -146,6 +160,17 @@ const styles = StyleSheet.create({
     taskDesc: { fontSize: 12, color: '#6B7280' },
     addColTaskBtn: { alignItems: 'center', paddingVertical: 10 },
     addColTaskText: { color: COLORS.primary, fontSize: 13 },
+    errorBanner: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#EF444420',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    errorText: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 8 },
+    retryText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
 });
 
 export default BoardDetailScreen;

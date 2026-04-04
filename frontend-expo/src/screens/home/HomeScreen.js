@@ -15,23 +15,46 @@ const HomeScreen = ({ navigation }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('All');
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadTasks();
-    }, []);
+    }, [user?.id]);
 
     const loadTasks = async () => {
-        try {
-            // TODO: Kullanıcının tüm panolarındaki görevleri yükle
+        if (!user?.id) {
+            setTasks([]);
             setLoading(false);
-        } catch (error) {
-            console.error('Tasks load error:', error);
+            return;
+        }
+        setError(null);
+        setLoading(true);
+        try {
+            const boards = await boardService.getBoards(user.id);
+            const merged = [];
+            for (const b of boards) {
+                const boardTasks = await taskService.getTasks(b.id);
+                merged.push(
+                    ...boardTasks.map((t) => ({
+                        ...t,
+                        boardName: b.name,
+                    })),
+                );
+            }
+            setTasks(merged);
+        } catch (err) {
+            console.error('Tasks load error:', err);
+            const msg = err.response?.data?.message || err.message || 'Görevler yüklenemedi.';
+            setError(msg);
+        } finally {
             setLoading(false);
         }
     };
 
-    const getTasksByStatus = (status) =>
-        tasks.filter((t) => t.status === status);
+    const visibleTasks =
+        activeFilter === 'All' ? tasks : tasks.filter((t) => t.status === activeFilter);
+
+    const getTasksByStatus = (status) => visibleTasks.filter((t) => t.status === status);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -56,6 +79,15 @@ const HomeScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+
+            {error && (
+                <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>{error}</Text>
+                    <TouchableOpacity onPress={loadTasks}>
+                        <Text style={styles.retryText}>Tekrar dene</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {loading ? (
                 <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
@@ -168,6 +200,17 @@ const styles = StyleSheet.create({
     taskDesc: { fontSize: 12, color: '#6B7280', lineHeight: 18 },
     emptyCol: { alignItems: 'center', paddingVertical: 20 },
     emptyText: { color: COLORS.textMuted, fontSize: 13 },
+    errorBanner: {
+        marginHorizontal: 20,
+        marginBottom: 8,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#EF444420',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    errorBannerText: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 8 },
+    retryText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
 });
 
 export default HomeScreen;

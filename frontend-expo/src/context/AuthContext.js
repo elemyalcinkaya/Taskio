@@ -38,6 +38,13 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (userData) => {
         const data = await authService.register(userData);
+        // Kayıt başarılı → token ve kullanıcı bilgisini kaydet, otomatik giriş yaptır
+        if (data.token && data.user) {
+            await AsyncStorage.setItem('token', data.token);
+            await AsyncStorage.setItem('user', JSON.stringify(data.user));
+            setToken(data.token);
+            setUser(data.user);
+        }
         return data;
     };
 

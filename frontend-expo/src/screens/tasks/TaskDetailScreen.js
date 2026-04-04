@@ -5,10 +5,12 @@ import {
 } from 'react-native';
 import { COLORS, STATUS_COLORS, PRIORITY_COLORS } from '../../constants/colors';
 import { taskService } from '../../services/taskService';
+import { useAuth } from '../../context/AuthContext';
 
 const STATUSES = ['To Do', 'In Progress', 'Review', 'Done'];
 
 const TaskDetailScreen = ({ route, navigation }) => {
+    const { user } = useAuth();
     const { taskId } = route.params;
     const [task, setTask] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -30,9 +32,13 @@ const TaskDetailScreen = ({ route, navigation }) => {
     };
 
     const handleStatusChange = async (newStatus) => {
+        if (!user?.id) {
+            Alert.alert('Hata', 'Oturum bulunamadı.');
+            return;
+        }
         try {
-            await taskService.updateStatus(taskId, newStatus);
-            setTask((prev) => ({ ...prev, status: newStatus }));
+            const updated = await taskService.updateStatus(taskId, newStatus, user.id);
+            setTask(updated);
         } catch (error) {
             Alert.alert('Hata', 'Durum güncellenemedi.');
         }
@@ -45,8 +51,12 @@ const TaskDetailScreen = ({ route, navigation }) => {
                 text: 'Sil',
                 style: 'destructive',
                 onPress: async () => {
+                    if (!user?.id) {
+                        Alert.alert('Hata', 'Oturum bulunamadı.');
+                        return;
+                    }
                     try {
-                        await taskService.deleteTask(taskId);
+                        await taskService.deleteTask(taskId, user.id);
                         navigation.goBack();
                     } catch (error) {
                         Alert.alert('Hata', 'Görev silinemedi.');

@@ -28,11 +28,12 @@ const ProfileScreen = ({ navigation }) => {
         }
     };
 
-    const handleLogout = () => {
-        Alert.alert('Çıkış Yap', 'Oturumunuzu kapatmak istiyor musunuz?', [
-            { text: 'İptal', style: 'cancel' },
-            { text: 'Çıkış Yap', style: 'destructive', onPress: logout },
-        ]);
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
     };
 
     const MENU_ITEMS = [

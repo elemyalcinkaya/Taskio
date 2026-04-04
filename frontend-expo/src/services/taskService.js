@@ -1,46 +1,45 @@
 import api from './api';
 import { ENDPOINTS } from '../constants/api';
+import { normalizeTaskForUi, uiStatusToApi } from '../utils/taskStatus';
+
+const mapTaskList = (data) => (Array.isArray(data) ? data : []).map(normalizeTaskForUi);
 
 export const taskService = {
-    // Board'a göre görevleri listele
     getTasks: async (boardId) => {
         const response = await api.get(ENDPOINTS.GET_TASKS(boardId));
-        return response.data;
+        return mapTaskList(response.data);
     },
 
-    // Görev oluştur
-    createTask: async (taskData) => {
-        const response = await api.post(ENDPOINTS.CREATE_TASK, taskData);
-        return response.data;
+    createTask: async (taskData, userId) => {
+        const response = await api.post(ENDPOINTS.CREATE_TASK, taskData, { params: { userId } });
+        return normalizeTaskForUi(response.data);
     },
 
-    // Görev detayı
     getTask: async (id) => {
         const response = await api.get(ENDPOINTS.GET_TASK(id));
-        return response.data;
+        return normalizeTaskForUi(response.data);
     },
 
-    // Görev güncelle
-    updateTask: async (id, taskData) => {
-        const response = await api.put(ENDPOINTS.UPDATE_TASK(id), taskData);
-        return response.data;
+    updateTask: async (id, taskData, userId) => {
+        const response = await api.put(ENDPOINTS.UPDATE_TASK(id), taskData, { params: { userId } });
+        return normalizeTaskForUi(response.data);
     },
 
-    // Görev sil
-    deleteTask: async (id) => {
-        const response = await api.delete(ENDPOINTS.DELETE_TASK(id));
-        return response.data;
+    deleteTask: async (id, userId) => {
+        await api.delete(ENDPOINTS.DELETE_TASK(id), { params: { userId } });
     },
 
-    // Görev durumunu güncelle
-    updateStatus: async (id, status) => {
-        const response = await api.patch(ENDPOINTS.UPDATE_TASK_STATUS(id), { status });
-        return response.data;
+    /** uiStatus: e.g. "To Do" — converted to API enum for Spring */
+    updateStatus: async (id, uiStatus, userId) => {
+        const response = await api.patch(
+            ENDPOINTS.UPDATE_TASK_STATUS(id),
+            { status: uiStatusToApi(uiStatus) },
+            { params: { userId } },
+        );
+        return normalizeTaskForUi(response.data);
     },
 
-    // Göreve kullanıcı ata
-    assignUser: async (taskId, userId) => {
-        const response = await api.post(ENDPOINTS.ASSIGN_USER(taskId), { userId });
-        return response.data;
+    assignUser: async (taskId, targetUserId, userId) => {
+        await api.post(ENDPOINTS.ASSIGN_USER(taskId), {}, { params: { targetUserId, userId } });
     },
 };

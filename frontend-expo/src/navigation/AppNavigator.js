@@ -14,6 +14,7 @@ import BottomTabNavigator from './BottomTabNavigator';
 // Detay ekranları
 import TaskDetailScreen from '../screens/tasks/TaskDetailScreen';
 import BoardDetailScreen from '../screens/boards/BoardDetailScreen';
+import AddTaskScreen from '../screens/tasks/AddTaskScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -47,6 +48,11 @@ const AppNavigator = () => {
                             name="BoardDetail"
                             component={BoardDetailScreen}
                             options={{ headerShown: true, title: 'Pano' }}
+                        />
+                        <Stack.Screen
+                            name="AddTask"
+                            component={AddTaskScreen}
+                            options={{ headerShown: false }}
                         />
                     </>
                 )}

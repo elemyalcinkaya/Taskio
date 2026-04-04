@@ -5,22 +5,34 @@ import {
 } from 'react-native';
 import { COLORS } from '../../constants/colors';
 import { boardService } from '../../services/boardService';
+import { useAuth } from '../../context/AuthContext';
 
 const BoardsScreen = ({ navigation }) => {
+    const { user } = useAuth();
     const [boards, setBoards] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadBoards();
-    }, []);
+    }, [user?.id]);
 
     const loadBoards = async () => {
+        if (!user?.id) {
+            setBoards([]);
+            setLoading(false);
+            return;
+        }
+        setError(null);
+        setLoading(true);
         try {
-            const data = await boardService.getBoards();
+            const data = await boardService.getBoards(user.id);
             setBoards(data);
-        } catch (error) {
-            console.error('Boards load error:', error);
+        } catch (err) {
+            console.error('Boards load error:', err);
+            const msg = err.response?.data?.message || err.message || 'Panolar yüklenemedi.';
+            setError(msg);
         } finally {
             setLoading(false);
         }
@@ -65,6 +77,15 @@ const BoardsScreen = ({ navigation }) => {
                     onChangeText={setSearch}
                 />
             </View>
+
+            {error && (
+                <View style={styles.errorBanner}>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity onPress={loadBoards}>
+                        <Text style={styles.retryText}>Tekrar dene</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             {loading ? (
                 <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
@@ -132,6 +153,17 @@ const styles = StyleSheet.create({
     loader: { flex: 1 },
     empty: { alignItems: 'center', marginTop: 80 },
     emptyText: { color: COLORS.textSecondary, fontSize: 15 },
+    errorBanner: {
+        marginHorizontal: 20,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 12,
+        backgroundColor: '#EF444420',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+    },
+    errorText: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 8 },
+    retryText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
 });
 
 export default BoardsScreen;

@@ -23,9 +23,7 @@ const RegisterScreen = ({ navigation }) => {
         setLoading(true);
         try {
             await register({ name: form.name, email: form.email, password: form.password });
-            Alert.alert('Başarılı', 'Hesabınız oluşturuldu. Giriş yapabilirsiniz.', [
-                { text: 'Tamam', onPress: () => navigation.navigate('Login') },
-            ]);
+            // AuthContext otomatik giriş yaptırıyor — AppNavigator ana ekrana yönlendirir
         } catch (error) {
             Alert.alert('Kayıt Hatası', error.response?.data?.message || 'Bir hata oluştu.');
         } finally {
