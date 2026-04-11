@@ -8,11 +8,12 @@ import java.util.List;
 @Data
 public class UpdateTaskRequest {
 
-    private String title; // Opsiyonel
-    private String description; // Opsiyonel
+    private String title;           // Opsiyonel
+    private String description;     // Opsiyonel
+    private Long boardId;           // Opsiyonel (board değişimi için)
     private Task.TaskStatus status; // Opsiyonel
     private Task.Priority priority; // Opsiyonel
     private List<Long> assigneeIds; // Opsiyonel
-    private List<Long> labelIds; // Opsiyonel
-    private LocalDateTime dueDate; // Opsiyonel
+    private List<Long> labelIds;    // Opsiyonel
+    private LocalDateTime dueDate;  // Opsiyonel
 }

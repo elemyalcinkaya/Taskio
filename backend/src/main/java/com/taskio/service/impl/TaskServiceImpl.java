@@ -75,6 +75,11 @@ public class TaskServiceImpl implements TaskService {
                         task.setPriority(request.getPriority());
                 if (request.getDueDate() != null)
                         task.setDueDate(request.getDueDate());
+                if (request.getBoardId() != null) {
+                        Board board = boardRepository.findById(request.getBoardId())
+                                        .orElseThrow(() -> new ResourceNotFoundException("Pano bulunamadı."));
+                        task.setBoard(board);
+                }
                 taskRepository.save(task);
                 return mapToResponse(task);
         }

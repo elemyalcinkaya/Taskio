@@ -24,22 +24,45 @@ const LABEL_COLORS = {
 
 const AddTaskScreen = ({ navigation, route }) => {
     const { user } = useAuth();
-    const { boardId, defaultStatus } = route?.params || {};
+    // task param is passed when we want to edit an existing task
+    const { boardId, defaultStatus, task } = route?.params || {};
+    const isEditMode = !!task;
+
     const [boards, setBoards] = useState([]);
     const [loadingBoards, setLoadingBoards] = useState(false);
+    
+    // task nesnesi normalizeTaskForUi'dan geçtiği için status UI formatında gelir ("To Do" gibi)
+    // Her iki formatı da destekle
+    const apiToUiStatus = {
+        TODO: 'To Do',
+        IN_PROGRESS: 'In Progress',
+        REVIEW: 'Review',
+        DONE: 'Done'
+    };
+    // UI format zaten doğruysa direkt kullan, değilse API→UI çevir
+    const uiStatuses = ['To Do', 'In Progress', 'Review', 'Done'];
+
+    const getInitialStatus = () => {
+        if (!task) return defaultStatus || 'To Do';
+        const s = task.status;
+        if (uiStatuses.includes(s)) return s;           // zaten UI format
+        if (apiToUiStatus[s]) return apiToUiStatus[s];  // API format, çevir
+        return defaultStatus || 'To Do';
+    };
+
     const [form, setForm] = useState({
-        title: '',
-        description: '',
-        boardId: boardId != null ? String(boardId) : '',
-        status: defaultStatus || 'To Do',
-        priority: 'MEDIUM',
-        labels: [],
-        assignees: [],
+        title: task ? task.title : '',
+        description: task && task.description ? task.description : '',
+        boardId: task && task.boardId ? String(task.boardId) : (boardId != null ? String(boardId) : ''),
+        status: getInitialStatus(),
+        priority: task && task.priority ? task.priority : 'MEDIUM',
+        labels: task && task.labels ? task.labels.map(l => l.name) : [],
+        assignees: task && task.assignees ? task.assignees : [],
     });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (boardId != null || !user?.id) return;
+        if (boardId != null || isEditMode || !user?.id) return;
         let cancelled = false;
         (async () => {
             setLoadingBoards(true);
@@ -55,7 +78,7 @@ const AddTaskScreen = ({ navigation, route }) => {
         return () => {
             cancelled = true;
         };
-    }, [boardId, user?.id]);
+    }, [boardId, isEditMode, user?.id]);
 
     const toggleLabel = (label) => {
         setForm((prev) => ({
@@ -66,7 +89,7 @@ const AddTaskScreen = ({ navigation, route }) => {
         }));
     };
 
-    const handleCreate = async () => {
+    const handleSave = async () => {
         if (!form.title.trim()) {
             Alert.alert('Hata', 'Görev başlığı boş bırakılamaz.');
             return;
@@ -75,26 +98,50 @@ const AddTaskScreen = ({ navigation, route }) => {
             Alert.alert('Hata', 'Oturum bulunamadı. Tekrar giriş yapın.');
             return;
         }
-        const bid = Number(form.boardId);
-        if (!bid || Number.isNaN(bid)) {
-            Alert.alert('Hata', 'Lütfen bir pano seçin.');
-            return;
-        }
+
         setLoading(true);
+        let finalBoardId = Number(form.boardId);
+
         try {
+            if (!isEditMode) {
+                // "Inbox" (Kişisel) Pano Mantığı
+                if (!finalBoardId || Number.isNaN(finalBoardId)) {
+                    let inbox = boards.find(b => b.name.toLowerCase() === 'inbox' || b.name.toLowerCase() === 'kişisel');
+                    if (inbox) {
+                        finalBoardId = inbox.id;
+                    } else {
+                        // Inbox panosu yok, oluştur!
+                        const newInbox = await boardService.createBoard(
+                            { name: 'Inbox', description: 'Kişisel görevlerim', color: '#8B5CF6' },
+                            user.id
+                        );
+                        finalBoardId = newInbox.id;
+                        setBoards(prev => [...prev, newInbox]);
+                    }
+                }
+            }
+
             const payload = {
                 title: form.title.trim(),
                 description: form.description.trim() || undefined,
-                boardId: bid,
+                boardId: isEditMode ? task.boardId : finalBoardId,
                 status: uiStatusToApi(form.status),
                 priority: form.priority,
             };
-            await taskService.createTask(payload, user.id);
-            Alert.alert('Başarılı', 'Görev oluşturuldu.', [
-                { text: 'Tamam', onPress: () => navigation.goBack() },
-            ]);
+
+            if (isEditMode) {
+                await taskService.updateTask(task.id, payload, user.id);
+                Alert.alert('Başarılı', 'Görev güncellendi.', [
+                    { text: 'Tamam', onPress: () => navigation.goBack() },
+                ]);
+            } else {
+                await taskService.createTask(payload, user.id);
+                Alert.alert('Başarılı', 'Görev oluşturuldu.', [
+                    { text: 'Tamam', onPress: () => navigation.goBack() },
+                ]);
+            }
         } catch (error) {
-            Alert.alert('Hata', error.response?.data?.message || 'Görev oluşturulamadı.');
+            Alert.alert('Hata', error.response?.data?.message || `Görev ${isEditMode ? 'güncellenemedi' : 'oluşturulamadı'}.`);
         } finally {
             setLoading(false);
         }
@@ -107,11 +154,11 @@ const AddTaskScreen = ({ navigation, route }) => {
                 <TouchableOpacity onPress={() => navigation.goBack()}>
                     <Text style={styles.cancelBtn}>✕</Text>
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>✨ Yeni Görev</Text>
-                <TouchableOpacity style={styles.createBtn} onPress={handleCreate} disabled={loading}>
+                <Text style={styles.headerTitle}>{isEditMode ? 'Görevi Düzenle' : 'Yeni Görev'}</Text>
+                <TouchableOpacity style={styles.createBtn} onPress={handleSave} disabled={loading}>
                     {loading
                         ? <ActivityIndicator size="small" color={COLORS.white} />
-                        : <Text style={styles.createBtnText}>Oluştur</Text>}
+                        : <Text style={styles.createBtnText}>{isEditMode ? 'Kaydet' : 'Oluştur'}</Text>}
                 </TouchableOpacity>
             </View>
 
@@ -140,12 +187,12 @@ const AddTaskScreen = ({ navigation, route }) => {
 
                 {boardId == null && (
                     <>
-                        <Text style={styles.label}>PANO *</Text>
+                        <Text style={styles.label}>PANO</Text>
                         {loadingBoards ? (
                             <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 12 }} />
                         ) : boards.length === 0 ? (
                             <Text style={styles.hintText}>
-                                Pano bulunamadı. Önce Panolar sekmesinden pano oluşturun.
+                                Pano bulunamadı. Görev otomatik olarak "Inbox" panonuza eklenecektir.
                             </Text>
                         ) : (
                             <View style={styles.chipRow}>
@@ -167,6 +214,7 @@ const AddTaskScreen = ({ navigation, route }) => {
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
+                                <Text style={styles.hintText}>* Boş bırakırsanız Inbox'a eklenir.</Text>
                             </View>
                         )}
                     </>

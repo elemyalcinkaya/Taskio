@@ -1,6 +1,10 @@
+import { Platform } from 'react-native';
+
 // API Endpoint Sabitleri
+const IP_ADDRESS = '192.168.1.48';
 export const BASE_URL =
-    process.env.EXPO_PUBLIC_API_BASE_URL || 'http://192.168.1.48:8080/api'; // Yerel IP fallback
+    process.env.EXPO_PUBLIC_API_BASE_URL || 
+    (Platform.OS === 'web' ? 'http://localhost:8080/api' : `http://${IP_ADDRESS}:8080/api`);
 
 export const ENDPOINTS = {
     // Auth
@@ -9,8 +13,8 @@ export const ENDPOINTS = {
     FORGOT_PASSWORD: '/auth/forgot-password',
 
     // Users
-    GET_PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
+    GET_PROFILE: '/auth/users/profile',
+    UPDATE_PROFILE: '/auth/users/profile',
 
     // Boards
     GET_BOARDS: '/boards',
@@ -20,7 +24,7 @@ export const ENDPOINTS = {
     ADD_BOARD_MEMBER: (id) => `/boards/${id}/members`,
 
     // Tasks
-    GET_TASKS: (boardId) => `/boards/${boardId}/tasks`,
+    GET_TASKS: (boardId) => `/tasks/board/${boardId}`,
     CREATE_TASK: '/tasks',
     GET_TASK: (id) => `/tasks/${id}`,
     UPDATE_TASK: (id) => `/tasks/${id}`,

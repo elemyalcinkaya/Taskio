@@ -8,6 +8,8 @@ import com.taskio.entity.User;
 import com.taskio.exception.BadRequestException;
 import com.taskio.exception.ResourceNotFoundException;
 import com.taskio.repository.UserRepository;
+import com.taskio.repository.TaskRepository;
+import com.taskio.repository.BoardRepository;
 import com.taskio.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
+    private final TaskRepository taskRepository;
+    private final BoardRepository boardRepository;
     private final PasswordEncoder passwordEncoder;
     // TODO: JwtService inject edilecek
 
@@ -89,6 +93,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserResponse mapToUserResponse(User user) {
+        int completedTasks = taskRepository.countCompletedTasksByUserId(user.getId());
+        int activeTasks = taskRepository.countActiveTasksByUserId(user.getId());
+        int boardCount = boardRepository.countAllBoardsByUserId(user.getId());
+
         return UserResponse.builder()
                 .id(user.getId())
                 .name(user.getName())
@@ -96,6 +104,9 @@ public class AuthServiceImpl implements AuthService {
                 .role(user.getRole())
                 .avatarUrl(user.getAvatarUrl())
                 .active(user.isActive())
+                .completedTasks(completedTasks)
+                .activeTasks(activeTasks)
+                .boardCount(boardCount)
                 .build();
     }
 }

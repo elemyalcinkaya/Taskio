@@ -8,6 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { ENDPOINTS } from '../../constants/api';
 
+import { Feather } from '@expo/vector-icons';
+
 const ProfileScreen = ({ navigation }) => {
     const { user, logout } = useAuth();
     const [profile, setProfile] = useState(null);
@@ -15,11 +17,14 @@ const ProfileScreen = ({ navigation }) => {
 
     useEffect(() => {
         loadProfile();
-    }, []);
+    }, [user?.id]);
 
     const loadProfile = async () => {
+        if (!user?.id) return;
         try {
-            const res = await api.get(ENDPOINTS.GET_PROFILE);
+            const res = await api.get(ENDPOINTS.GET_PROFILE, {
+                params: { userId: user.id }
+            });
             setProfile(res.data);
         } catch (error) {
             console.error('Profile load error:', error);
@@ -37,11 +42,11 @@ const ProfileScreen = ({ navigation }) => {
     };
 
     const MENU_ITEMS = [
-        { icon: '👤', title: 'Kişisel Bilgiler', subtitle: 'Ad, e-posta, rol', section: 'HESAP' },
-        { icon: '🔔', title: 'Bildirimler', subtitle: 'Push, e-posta bildirimleri', section: '' },
-        { icon: '🔒', title: 'Gizlilik & Güvenlik', subtitle: 'Şifre, 2FA', section: '' },
-        { icon: '🎨', title: 'Görünüm', subtitle: 'Tema, renkler, fontlar', section: 'TERCİHLER' },
-        { icon: '📋', title: 'Çalışma Alanı', subtitle: 'Varsayılan pano ayarları', section: '' },
+        { icon: 'user', title: 'Kişisel Bilgiler', subtitle: 'Ad, e-posta, rol', section: 'HESAP' },
+        { icon: 'bell', title: 'Bildirimler', subtitle: 'Push, e-posta bildirimleri', section: '' },
+        { icon: 'lock', title: 'Gizlilik & Güvenlik', subtitle: 'Şifre, 2FA', section: '' },
+        { icon: 'aperture', title: 'Görünüm', subtitle: 'Tema, renkler, fontlar', section: 'TERCİHLER' },
+        { icon: 'layout', title: 'Çalışma Alanı', subtitle: 'Varsayılan pano ayarları', section: '' },
     ];
 
     return (
@@ -51,7 +56,7 @@ const ProfileScreen = ({ navigation }) => {
                 <View style={styles.header}>
                     <Text style={styles.headerTitle}>Profil</Text>
                     <TouchableOpacity>
-                        <Text style={styles.editIcon}>✏️</Text>
+                        <Feather name="edit-3" size={20} color={COLORS.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -97,7 +102,7 @@ const ProfileScreen = ({ navigation }) => {
                         {MENU_ITEMS.filter((item) => item.section === section || (section === 'HESAP' && item.section === '')).slice(0, section === 'HESAP' ? 3 : 2).map((item) => (
                             <TouchableOpacity key={item.title} style={styles.menuItem}>
                                 <View style={styles.menuIconContainer}>
-                                    <Text style={styles.menuIcon}>{item.icon}</Text>
+                                    <Feather name={item.icon} size={18} color={COLORS.text} />
                                 </View>
                                 <View style={styles.menuContent}>
                                     <Text style={styles.menuTitle}>{item.title}</Text>

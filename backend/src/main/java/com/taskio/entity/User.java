@@ -29,7 +29,7 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    private String role; // ör: "Product Designer", "Developer"
+    private String role; // ör: "Student", "Developer"
 
     private String avatarUrl;
 

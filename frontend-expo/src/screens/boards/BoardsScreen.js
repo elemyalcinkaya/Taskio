@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, FlatList, StyleSheet, SafeAreaView,
-    TouchableOpacity, ActivityIndicator, TextInput,
+    TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { boardService } from '../../services/boardService';
 import { useAuth } from '../../context/AuthContext';
@@ -13,6 +14,12 @@ const BoardsScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [error, setError] = useState(null);
+
+    // Yeni pano modal stateleri
+    const [modalVisible, setModalVisible] = useState(false);
+    const [newBoardName, setNewBoardName] = useState('');
+    const [newBoardDesc, setNewBoardDesc] = useState('');
+    const [creating, setCreating] = useState(false);
 
     useEffect(() => {
         loadBoards();
@@ -35,6 +42,28 @@ const BoardsScreen = ({ navigation }) => {
             setError(msg);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateBoard = async () => {
+        if (!newBoardName.trim()) {
+            Alert.alert('Hata', 'Pano adı boş olamaz.');
+            return;
+        }
+        setCreating(true);
+        try {
+            await boardService.createBoard(
+                { name: newBoardName.trim(), description: newBoardDesc.trim() || undefined, color: '#6C3CE1' }, 
+                user.id
+            );
+            setModalVisible(false);
+            setNewBoardName('');
+            setNewBoardDesc('');
+            loadBoards(); // Listeyi yenile
+        } catch (err) {
+            Alert.alert('Hata', err.response?.data?.message || 'Pano oluşturulamadı.');
+        } finally {
+            setCreating(false);
         }
     };
 
@@ -61,14 +90,14 @@ const BoardsScreen = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.title}>Panolarım</Text>
-                <TouchableOpacity style={styles.addBtn}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => setModalVisible(true)}>
                     <Text style={styles.addBtnText}>+ Pano</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Arama */}
             <View style={styles.searchBar}>
-                <Text style={styles.searchIcon}>🔍</Text>
+                <Feather name="search" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
                 <TextInput
                     style={styles.searchInput}
                     placeholder="Pano ara..."
@@ -104,6 +133,48 @@ const BoardsScreen = ({ navigation }) => {
                     }
                 />
             )}
+
+            {/* Pano Ekleme Modal */}
+            <Modal visible={modalVisible} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Yeni Pano</Text>
+                            <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <Feather name="x" size={24} color={COLORS.textMuted} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.label}>PANO ADI *</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Örn: Pazarlama Kampanyası"
+                            placeholderTextColor={COLORS.textMuted}
+                            value={newBoardName}
+                            onChangeText={setNewBoardName}
+                            autoFocus
+                        />
+
+                        <Text style={styles.label}>AÇIKLAMA</Text>
+                        <TextInput
+                            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                            placeholder="Pano hakkında kısa bir açıklama..."
+                            placeholderTextColor={COLORS.textMuted}
+                            value={newBoardDesc}
+                            onChangeText={setNewBoardDesc}
+                            multiline
+                        />
+
+                        <TouchableOpacity style={styles.modalCreateBtn} onPress={handleCreateBoard} disabled={creating}>
+                            {creating ? (
+                                <ActivityIndicator color={COLORS.white} />
+                            ) : (
+                                <Text style={styles.modalCreateBtnText}>Oluştur</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -135,7 +206,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: COLORS.border,
     },
-    searchIcon: { fontSize: 16, marginRight: 8 },
+    searchIcon: { marginRight: 8 },
     searchInput: { flex: 1, color: COLORS.text, paddingVertical: 12, fontSize: 15 },
     list: { paddingHorizontal: 12 },
     row: { justifyContent: 'space-between', marginBottom: 12 },
@@ -164,6 +235,51 @@ const styles = StyleSheet.create({
     },
     errorText: { color: COLORS.textSecondary, fontSize: 14, marginBottom: 8 },
     retryText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
+    // Modal Stilleri
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: COLORS.surfaceLight,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        paddingBottom: 40,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: COLORS.text },
+    label: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: COLORS.textMuted,
+        letterSpacing: 1,
+        marginBottom: 8,
+        marginTop: 12,
+    },
+    input: {
+        backgroundColor: COLORS.surface,
+        borderRadius: 12,
+        padding: 14,
+        color: COLORS.text,
+        fontSize: 15,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    modalCreateBtn: {
+        backgroundColor: COLORS.primary,
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 24,
+    },
+    modalCreateBtnText: { color: COLORS.white, fontWeight: 'bold', fontSize: 16 },
 });
 
 export default BoardsScreen;

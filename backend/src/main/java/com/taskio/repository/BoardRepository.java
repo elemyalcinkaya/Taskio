@@ -16,4 +16,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     // Kullanıcının üye olduğu tüm panolar (sahip + üye)
     @Query("SELECT b FROM Board b LEFT JOIN b.members m WHERE b.owner.id = :userId OR m.user.id = :userId")
     List<Board> findAllBoardsByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(DISTINCT b) FROM Board b LEFT JOIN b.members m WHERE b.owner.id = :userId OR m.user.id = :userId")
+    int countAllBoardsByUserId(@Param("userId") Long userId);
 }

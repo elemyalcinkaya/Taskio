@@ -1,66 +1,72 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
+import { useNavigation } from '@react-navigation/native';
 
-// Ekranlar
-import HomeScreen from '../screens/home/HomeScreen';
-import BoardsScreen from '../screens/boards/BoardsScreen';
-import AddTaskScreen from '../screens/tasks/AddTaskScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
+// Stack navigators for each tab
+import HomeStackNavigator from './HomeStackNavigator';
+import BoardsStackNavigator from './BoardsStackNavigator';
+import ProfileStackNavigator from './ProfileStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
-// Özel Add butonu
-const AddButton = ({ onPress }) => (
-    <TouchableOpacity style={styles.addButton} onPress={onPress}>
-        <Text style={styles.addIcon}>+</Text>
-    </TouchableOpacity>
-);
+// Eşit hizalı, ortalanmış Add butonu (Yazısız, sadece ikon tarzı ile eşit hizayı korur)
+const AddButton = () => {
+    const navigation = useNavigation();
+    return (
+        <TouchableOpacity style={styles.addTabButton} onPress={() => navigation.navigate('AddTask')}>
+            <View style={styles.addIconContainer}>
+                <Feather name="plus" size={24} color={COLORS.white} />
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 const BottomTabNavigator = () => {
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            screenOptions={{
                 headerShown: false,
                 tabBarStyle: styles.tabBar,
                 tabBarActiveTintColor: COLORS.primary,
                 tabBarInactiveTintColor: COLORS.textMuted,
                 tabBarLabelStyle: styles.tabLabel,
-            })}>
+                tabBarItemStyle: styles.tabItem, // Eşit dağıtım için
+            }}>
             <Tab.Screen
                 name="Home"
-                component={HomeScreen}
+                component={HomeStackNavigator}
                 options={{
-                    tabBarLabel: 'Home',
-                    tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🏠</Text>,
+                    tabBarLabel: 'Ana Sayfa',
+                    tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
                 }}
             />
             <Tab.Screen
                 name="Boards"
-                component={BoardsScreen}
+                component={BoardsStackNavigator}
                 options={{
-                    tabBarLabel: 'Boards',
-                    tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📋</Text>,
+                    tabBarLabel: 'Panolar',
+                    tabBarIcon: ({ color }) => <Feather name="layout" size={22} color={color} />,
                 }}
             />
+            {/* Görev Ekle Butonu */}
             <Tab.Screen
-                name="AddTask"
-                component={AddTaskScreen}
+                name="AddTaskPlaceholder"
+                component={HomeStackNavigator} // Dummy component since button is overridden
                 options={{
                     tabBarLabel: '',
                     tabBarIcon: () => null,
-                    tabBarButton: (props) => (
-                        <AddButton onPress={props.onPress} />
-                    ),
+                    tabBarButton: () => <AddButton />,
                 }}
             />
             <Tab.Screen
                 name="Profile"
-                component={ProfileScreen}
+                component={ProfileStackNavigator}
                 options={{
-                    tabBarLabel: 'Profile',
-                    tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text>,
+                    tabBarLabel: 'Profil',
+                    tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
                 }}
             />
         </Tab.Navigator>
@@ -72,33 +78,34 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surface,
         borderTopColor: COLORS.border,
         borderTopWidth: 1,
-        height: 70,
-        paddingBottom: 10,
+        height: 64,
+        paddingBottom: 8,
         paddingTop: 8,
+        elevation: 0,
+    },
+    tabItem: {
+        flex: 1, // Tüm butonların eşit alan kaplamasını sağlar
+        justifyContent: 'center',
+        paddingVertical: 5,
     },
     tabLabel: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '500',
+        marginTop: 4,
     },
-    addButton: {
-        top: -20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+    addTabButton: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addIconContainer: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    addIcon: {
-        fontSize: 28,
-        color: COLORS.white,
-        fontWeight: 'bold',
-        lineHeight: 32,
+        marginTop: 4, 
     },
 });
 
