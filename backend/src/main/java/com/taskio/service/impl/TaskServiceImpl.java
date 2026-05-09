@@ -8,6 +8,7 @@ import com.taskio.dto.response.UserResponse;
 import com.taskio.entity.*;
 import com.taskio.exception.ResourceNotFoundException;
 import com.taskio.repository.*;
+import com.taskio.repository.TaskAssigneeRepository;
 import com.taskio.service.TaskService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,19 @@ public class TaskServiceImpl implements TaskService {
         private final BoardRepository boardRepository;
         private final UserRepository userRepository;
         private final LabelRepository labelRepository;
+        private final TaskAssigneeRepository taskAssigneeRepository;
 
         @Override
         public List<TaskResponse> getTasksByBoard(Long boardId) {
                 return taskRepository.findByBoardId(boardId)
+                                .stream()
+                                .map(this::mapToResponse)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<TaskResponse> getTasksByUser(Long userId) {
+                return taskRepository.findAllTasksByUserId(userId)
                                 .stream()
                                 .map(this::mapToResponse)
                                 .collect(Collectors.toList());
@@ -109,14 +119,21 @@ public class TaskServiceImpl implements TaskService {
                                 .orElseThrow(() -> new ResourceNotFoundException("Görev bulunamadı."));
                 User user = userRepository.findById(targetUserId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı."));
-                TaskAssignee assignee = TaskAssignee.builder()
-                                .task(task)
-                                .user(user)
-                                .build();
-                // TODO: TaskAssigneeRepository inject edilip kayıt yapılacak
+                if (!taskAssigneeRepository.existsByTaskIdAndUserId(taskId, targetUserId)) {
+                        TaskAssignee assignee = TaskAssignee.builder()
+                                        .task(task)
+                                        .user(user)
+                                        .build();
+                        taskAssigneeRepository.save(assignee);
+                }
         }
 
         private TaskResponse mapToResponse(Task task) {
+                List<UserResponse> assignees = taskAssigneeRepository.findByTaskId(task.getId())
+                                .stream()
+                                .map(a -> mapUser(a.getUser()))
+                                .collect(Collectors.toList());
+
                 return TaskResponse.builder()
                                 .id(task.getId())
                                 .title(task.getTitle())
@@ -126,6 +143,7 @@ public class TaskServiceImpl implements TaskService {
                                 .boardId(task.getBoard() != null ? task.getBoard().getId() : null)
                                 .boardName(task.getBoard() != null ? task.getBoard().getName() : null)
                                 .creator(task.getCreator() != null ? mapUser(task.getCreator()) : null)
+                                .assignees(assignees)
                                 .dueDate(task.getDueDate())
                                 .createdAt(task.getCreatedAt())
                                 .updatedAt(task.getUpdatedAt())
@@ -137,6 +155,8 @@ public class TaskServiceImpl implements TaskService {
                                 .id(user.getId())
                                 .name(user.getName())
                                 .email(user.getEmail())
+                                .role(user.getRole())
+                                .avatarUrl(user.getAvatarUrl())
                                 .build();
         }
 }

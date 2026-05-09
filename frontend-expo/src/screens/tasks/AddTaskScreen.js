@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    SafeAreaView, ScrollView, ActivityIndicator, Alert,
+    SafeAreaView, ScrollView, ActivityIndicator, Alert, Modal
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
 import { taskService } from '../../services/taskService';
 import { boardService } from '../../services/boardService';
+import { followService } from '../../services/followService';
 import { useAuth } from '../../context/AuthContext';
 import { uiStatusToApi } from '../../utils/taskStatus';
 
@@ -60,6 +62,22 @@ const AddTaskScreen = ({ navigation, route }) => {
         assignees: task && task.assignees ? task.assignees : [],
     });
     const [loading, setLoading] = useState(false);
+    const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+    // Atanan kişiler
+    const [followingUsers, setFollowingUsers] = useState([]);
+    const [showAssigneePicker, setShowAssigneePicker] = useState(false);
+    const [selectedAssignees, setSelectedAssignees] = useState(
+        task?.assignees ? task.assignees.map(a => a.id) : []
+    );
+
+    useEffect(() => {
+        if (user?.id) {
+            followService.getFollowing(user.id)
+                .then(setFollowingUsers)
+                .catch(() => {});
+        }
+    }, [user?.id]);
 
     useEffect(() => {
         if (boardId != null || isEditMode || !user?.id) return;
@@ -89,6 +107,12 @@ const AddTaskScreen = ({ navigation, route }) => {
         }));
     };
 
+    const toggleAssignee = (userId) => {
+        setSelectedAssignees(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
+
     const handleSave = async () => {
         if (!form.title.trim()) {
             Alert.alert('Hata', 'Görev başlığı boş bırakılamaz.');
@@ -100,13 +124,26 @@ const AddTaskScreen = ({ navigation, route }) => {
         }
 
         setLoading(true);
-        let finalBoardId = Number(form.boardId);
+        let finalBoardId = form.boardId ? Number(form.boardId) : null;
 
         try {
             if (!isEditMode) {
-                // "Inbox" (Kişisel) Pano Mantığı
+                // boardId geçersizse (seçilmediyse veya NaN ise) Inbox mantığı
                 if (!finalBoardId || Number.isNaN(finalBoardId)) {
-                    let inbox = boards.find(b => b.name.toLowerCase() === 'inbox' || b.name.toLowerCase() === 'kişisel');
+                    // Önce mevcut panoların yüklü olup olmadığını kontrol et
+                    let boardList = boards;
+                    if (boardList.length === 0) {
+                        try {
+                            boardList = await boardService.getBoards(user.id);
+                            setBoards(boardList);
+                        } catch {
+                            boardList = [];
+                        }
+                    }
+
+                    let inbox = boardList.find(
+                        b => b.name.toLowerCase() === 'inbox' || b.name.toLowerCase() === 'kişisel'
+                    );
                     if (inbox) {
                         finalBoardId = inbox.id;
                     } else {
@@ -121,27 +158,60 @@ const AddTaskScreen = ({ navigation, route }) => {
                 }
             }
 
+            // Son kontrol: boardId hâlâ geçersizse kaydetme
+            const effectiveBoardId = isEditMode ? (task.boardId ? Number(task.boardId) : null) : finalBoardId;
+            if (!effectiveBoardId || Number.isNaN(effectiveBoardId)) {
+                Alert.alert('Hata', 'Lütfen bir pano seçin.');
+                setLoading(false);
+                return;
+            }
+
             const payload = {
                 title: form.title.trim(),
                 description: form.description.trim() || undefined,
-                boardId: isEditMode ? task.boardId : finalBoardId,
+                boardId: effectiveBoardId,
                 status: uiStatusToApi(form.status),
                 priority: form.priority,
             };
 
             if (isEditMode) {
                 await taskService.updateTask(task.id, payload, user.id);
-                Alert.alert('Başarılı', 'Görev güncellendi.', [
-                    { text: 'Tamam', onPress: () => navigation.goBack() },
-                ]);
+                // Seçili kişileri ata
+                await Promise.allSettled(
+                    selectedAssignees.map(uid =>
+                        taskService.assignUser(task.id, uid, user.id)
+                    )
+                );
+                setShowSuccessPopup(true);
+                setTimeout(() => {
+                    setShowSuccessPopup(false);
+                    navigation.goBack();
+                }, 1500);
             } else {
-                await taskService.createTask(payload, user.id);
-                Alert.alert('Başarılı', 'Görev oluşturuldu.', [
-                    { text: 'Tamam', onPress: () => navigation.goBack() },
-                ]);
+                const created = await taskService.createTask(payload, user.id);
+                // Seçili kişileri ata
+                if (created?.id && selectedAssignees.length > 0) {
+                    await Promise.allSettled(
+                        selectedAssignees.map(uid =>
+                            taskService.assignUser(created.id, uid, user.id)
+                        )
+                    );
+                }
+                setShowSuccessPopup(true);
+                setTimeout(() => {
+                    setShowSuccessPopup(false);
+                    navigation.goBack();
+                }, 1500);
             }
         } catch (error) {
-            Alert.alert('Hata', error.response?.data?.message || `Görev ${isEditMode ? 'güncellenemedi' : 'oluşturulamadı'}.`);
+            const msg =
+                error.response?.data?.message ||
+                error.response?.data?.title ||
+                (error.response?.status === 400 ? 'Geçersiz veri gönderildi. Lütfen formu kontrol edin.' :
+                error.response?.status === 404 ? 'Pano veya kullanıcı bulunamadı.' :
+                error.message === 'Network Error' ? 'Sunucuya ulaşılamıyor. Ağ bağlantını kontrol et.' :
+                `Görev ${isEditMode ? 'güncellenemedi' : 'oluşturulamadı'}.`);
+            Alert.alert('Hata', msg);
         } finally {
             setLoading(false);
         }
@@ -264,8 +334,97 @@ const AddTaskScreen = ({ navigation, route }) => {
                     ))}
                 </View>
 
+                {/* Atananlar */}
+                <Text style={styles.label}>ATANACAK KİŞİLER</Text>
+                <TouchableOpacity
+                    style={styles.assigneePickerBtn}
+                    onPress={() => setShowAssigneePicker(true)}
+                >
+                    <Feather name="user-plus" size={16} color={COLORS.primary} />
+                    <Text style={styles.assigneePickerBtnText}>
+                        {selectedAssignees.length === 0
+                            ? 'Kişi Seç'
+                            : `${selectedAssignees.length} kişi seçildi`}
+                    </Text>
+                </TouchableOpacity>
+                {selectedAssignees.length > 0 && (
+                    <View style={styles.selectedAssigneesRow}>
+                        {followingUsers.filter(u => selectedAssignees.includes(u.id)).map(u => (
+                            <View key={u.id} style={styles.assigneeChip}>
+                                <View style={styles.assigneeMiniAvatar}>
+                                    <Text style={styles.assigneeMiniAvatarText}>
+                                        {(u.name || 'U').charAt(0).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <Text style={styles.assigneeChipText}>{u.name}</Text>
+                                <TouchableOpacity onPress={() => toggleAssignee(u.id)}>
+                                    <Feather name="x" size={12} color={COLORS.textMuted} />
+                                </TouchableOpacity>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
                 <View style={{ height: 40 }} />
             </ScrollView>
+
+            {/* Assignee Picker Modal */}
+            <Modal visible={showAssigneePicker} animationType="slide" transparent onRequestClose={() => setShowAssigneePicker(false)}>
+                <View style={styles.popupOverlay}>
+                    <View style={[styles.popupContent, { width: '90%', maxHeight: '70%', alignItems: 'stretch' }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <Text style={styles.pickerTitle}>Kişi Seç</Text>
+                            <TouchableOpacity onPress={() => setShowAssigneePicker(false)}>
+                                <Feather name="x" size={20} color={COLORS.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                        {followingUsers.length === 0 ? (
+                            <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                                <Feather name="users" size={40} color={COLORS.textMuted} />
+                                <Text style={{ color: COLORS.textSecondary, marginTop: 12, textAlign: 'center' }}>
+                                    Henüz kimseyi takip etmiyorsunuz.{'\n'}Profil &gt; Kişiler bölümünden takip edebilirsiniz.
+                                </Text>
+                            </View>
+                        ) : (
+                            followingUsers.map(u => (
+                                <TouchableOpacity
+                                    key={u.id}
+                                    style={[styles.pickerRow, selectedAssignees.includes(u.id) && styles.pickerRowSelected]}
+                                    onPress={() => toggleAssignee(u.id)}
+                                >
+                                    <View style={styles.pickerAvatar}>
+                                        <Text style={styles.pickerAvatarText}>{(u.name || 'U').charAt(0).toUpperCase()}</Text>
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.pickerName}>{u.name}</Text>
+                                        <Text style={styles.pickerRole}>{u.role || u.email}</Text>
+                                    </View>
+                                    {selectedAssignees.includes(u.id) && (
+                                        <Feather name="check-circle" size={20} color={COLORS.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            ))
+                        )}
+                        <TouchableOpacity style={[styles.popupIconContainer, { width: '100%', borderRadius: 12, marginTop: 16, height: 48 }]} onPress={() => setShowAssigneePicker(false)}>
+                            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Tamam</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Başarı Popup */}
+            <Modal visible={showSuccessPopup} transparent animationType="fade">
+                <View style={styles.popupOverlay}>
+                    <View style={styles.popupContent}>
+                        <View style={styles.popupIconContainer}>
+                            <Feather name="check" size={32} color={COLORS.white} />
+                        </View>
+                        <Text style={styles.popupText}>
+                            {isEditMode ? 'Görev Düzenlendi' : 'Görev Oluşturuldu'}
+                        </Text>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -321,6 +480,107 @@ const styles = StyleSheet.create({
     chipText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: '500' },
     chipTextActive: { color: COLORS.white },
     hintText: { color: COLORS.textMuted, fontSize: 14, lineHeight: 20 },
+    popupOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    popupContent: {
+        backgroundColor: COLORS.surface,
+        padding: 30,
+        borderRadius: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.1,
+        shadowRadius: 20,
+        elevation: 5,
+    },
+    popupIconContainer: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    popupText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: COLORS.text,
+    },
+    // Assignee styles
+    assigneePickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        backgroundColor: COLORS.surface,
+        borderRadius: 12,
+        padding: 14,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        borderStyle: 'dashed',
+    },
+    assigneePickerBtnText: {
+        color: COLORS.primary,
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    selectedAssigneesRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 10,
+    },
+    assigneeChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: COLORS.surface,
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+    assigneeMiniAvatar: {
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    assigneeMiniAvatarText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+    assigneeChipText: { color: COLORS.text, fontSize: 13, fontWeight: '500' },
+    pickerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
+    pickerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 8,
+        backgroundColor: COLORS.background,
+    },
+    pickerRowSelected: {
+        backgroundColor: `${COLORS.primary}20`,
+        borderWidth: 1,
+        borderColor: `${COLORS.primary}40`,
+    },
+    pickerAvatar: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pickerAvatarText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+    pickerName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+    pickerRole: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
 });
 
 export default AddTaskScreen;

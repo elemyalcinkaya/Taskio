@@ -19,7 +19,10 @@ public class UserResponse {
     private boolean active;
 
     // Profil sayfası için istatistikler
-    private int completedTasks; // Tamamlanan görev sayısı
-    private int activeTasks; // Aktif görev sayısı
-    private int boardCount; // Dahil olunan pano sayısı
+    private int completedTasks;
+    private int activeTasks;
+    private int boardCount;
+
+    // Takip durumu (arama/listeleme için)
+    private boolean isFollowing;
 }

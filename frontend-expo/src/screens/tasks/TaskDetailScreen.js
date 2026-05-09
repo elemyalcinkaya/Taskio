@@ -48,16 +48,6 @@ const TaskDetailScreen = ({ route, navigation }) => {
         }
     };
 
-    const handleStatusChange = async (newStatus) => {
-        if (!user?.id) return;
-        try {
-            const updated = await taskService.updateStatus(taskId, newStatus, user.id);
-            setTask(updated);
-        } catch (error) {
-            console.error('Status update error:', error);
-        }
-    };
-
     const performDelete = async () => {
         if (!user?.id) return;
         setShowDeleteModal(false);
@@ -108,25 +98,25 @@ const TaskDetailScreen = ({ route, navigation }) => {
                     <Text style={styles.description}>{task.description}</Text>
                 )}
 
-                {/* Durum Seçici */}
+                {/* Durum Göstergesi */}
                 <Text style={styles.sectionTitle}>DURUM</Text>
                 <View style={styles.statusRow}>
                     {STATUSES.map((s) => (
-                        <TouchableOpacity
+                        <View
                             key={s}
                             style={[
                                 styles.statusChip,
                                 { borderColor: STATUS_COLORS[s] },
                                 task.status === s && { backgroundColor: STATUS_COLORS[s] },
-                            ]}
-                            onPress={() => handleStatusChange(s)}>
+                                task.status !== s && { opacity: 0.5 }
+                            ]}>
                             <Text style={[
                                 styles.statusText,
                                 { color: task.status === s ? COLORS.white : STATUS_COLORS[s] },
                             ]}>
                                 {s}
                             </Text>
-                        </TouchableOpacity>
+                        </View>
                     ))}
                 </View>
 

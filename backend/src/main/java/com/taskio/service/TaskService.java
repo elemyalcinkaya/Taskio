@@ -20,4 +20,6 @@ public interface TaskService {
     TaskResponse updateStatus(Long taskId, Long userId, UpdateStatusRequest request);
 
     void assignUser(Long taskId, Long targetUserId, Long requesterId);
+
+    List<TaskResponse> getTasksByUser(Long userId);
 }

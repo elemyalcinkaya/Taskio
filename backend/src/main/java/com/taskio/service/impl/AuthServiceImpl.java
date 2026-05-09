@@ -93,8 +93,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private UserResponse mapToUserResponse(User user) {
-        int completedTasks = taskRepository.countCompletedTasksByUserId(user.getId());
-        int activeTasks = taskRepository.countActiveTasksByUserId(user.getId());
+        int completedTasks = taskRepository.countTasksByUserIdAndStatus(user.getId(), com.taskio.entity.Task.TaskStatus.DONE);
+        int activeTasks = taskRepository.countActiveTasksByUserId(user.getId(), com.taskio.entity.Task.TaskStatus.DONE);
         int boardCount = boardRepository.countAllBoardsByUserId(user.getId());
 
         return UserResponse.builder()

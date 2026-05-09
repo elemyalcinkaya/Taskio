@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 // API Endpoint Sabitleri
-const IP_ADDRESS = '192.168.1.48';
+const IP_ADDRESS = '192.168.1.47';
 export const BASE_URL =
     process.env.EXPO_PUBLIC_API_BASE_URL || 
     (Platform.OS === 'web' ? 'http://localhost:8080/api' : `http://${IP_ADDRESS}:8080/api`);
@@ -15,6 +15,10 @@ export const ENDPOINTS = {
     // Users
     GET_PROFILE: '/auth/users/profile',
     UPDATE_PROFILE: '/auth/users/profile',
+    SEARCH_USERS: '/users/search',
+    FOLLOW_USER: (id) => `/users/${id}/follow`,
+    GET_FOLLOWING: (id) => `/users/${id}/following`,
+    GET_FOLLOWERS: (id) => `/users/${id}/followers`,
 
     // Boards
     GET_BOARDS: '/boards',
@@ -25,6 +29,7 @@ export const ENDPOINTS = {
 
     // Tasks
     GET_TASKS: (boardId) => `/tasks/board/${boardId}`,
+    GET_USER_TASKS: '/tasks/user',
     CREATE_TASK: '/tasks',
     GET_TASK: (id) => `/tasks/${id}`,
     UPDATE_TASK: (id) => `/tasks/${id}`,

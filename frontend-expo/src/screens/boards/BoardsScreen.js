@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, FlatList, StyleSheet, SafeAreaView,
-    TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert
+    TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert,
+    KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../../constants/colors';
@@ -135,45 +136,56 @@ const BoardsScreen = ({ navigation }) => {
             )}
 
             {/* Pano Ekleme Modal */}
-            <Modal visible={modalVisible} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Yeni Pano</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Feather name="x" size={24} color={COLORS.textMuted} />
+            <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+                <KeyboardAvoidingView
+                    style={styles.modalOverlay}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={0}
+                >
+                    <ScrollView
+                        contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHandle} />
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>Yeni Pano</Text>
+                                <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                    <Feather name="x" size={24} color={COLORS.textMuted} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={styles.label}>PANO ADI *</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Örn: Pazarlama Kampanyası"
+                                placeholderTextColor={COLORS.textMuted}
+                                value={newBoardName}
+                                onChangeText={setNewBoardName}
+                                autoFocus
+                                returnKeyType="next"
+                            />
+
+                            <Text style={styles.label}>AÇIKLAMA</Text>
+                            <TextInput
+                                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                                placeholder="Pano hakkında kısa bir açıklama..."
+                                placeholderTextColor={COLORS.textMuted}
+                                value={newBoardDesc}
+                                onChangeText={setNewBoardDesc}
+                                multiline
+                            />
+
+                            <TouchableOpacity style={styles.modalCreateBtn} onPress={handleCreateBoard} disabled={creating}>
+                                {creating ? (
+                                    <ActivityIndicator color={COLORS.white} />
+                                ) : (
+                                    <Text style={styles.modalCreateBtnText}>Oluştur</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
-
-                        <Text style={styles.label}>PANO ADI *</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Örn: Pazarlama Kampanyası"
-                            placeholderTextColor={COLORS.textMuted}
-                            value={newBoardName}
-                            onChangeText={setNewBoardName}
-                            autoFocus
-                        />
-
-                        <Text style={styles.label}>AÇIKLAMA</Text>
-                        <TextInput
-                            style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-                            placeholder="Pano hakkında kısa bir açıklama..."
-                            placeholderTextColor={COLORS.textMuted}
-                            value={newBoardDesc}
-                            onChangeText={setNewBoardDesc}
-                            multiline
-                        />
-
-                        <TouchableOpacity style={styles.modalCreateBtn} onPress={handleCreateBoard} disabled={creating}>
-                            {creating ? (
-                                <ActivityIndicator color={COLORS.white} />
-                            ) : (
-                                <Text style={styles.modalCreateBtnText}>Oluştur</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </Modal>
         </SafeAreaView>
     );
@@ -239,14 +251,21 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'flex-end',
+    },
+    modalHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: COLORS.border,
+        alignSelf: 'center',
+        marginBottom: 16,
     },
     modalContent: {
         backgroundColor: COLORS.surfaceLight,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         padding: 24,
-        paddingBottom: 40,
+        paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     },
     modalHeader: {
         flexDirection: 'row',

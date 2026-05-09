@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { COLORS } from '../constants/colors';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +12,9 @@ import BoardsStackNavigator from './BoardsStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
 
 const Tab = createBottomTabNavigator();
+
+// Hiçbir zaman render edilmeyecek boş ekran (AddTask butonu tabBarButton ile override ediliyor)
+const EmptyScreen = () => <View style={{ flex: 1 }} />;
 
 // Eşit hizalı, ortalanmış Add butonu (Yazısız, sadece ikon tarzı ile eşit hizayı korur)
 const AddButton = () => {
@@ -25,15 +29,19 @@ const AddButton = () => {
 };
 
 const BottomTabNavigator = () => {
+    const insets = useSafeAreaInsets();
+    // iPhone home indicator alanını hesaba kat (minimum 8px padding)
+    const bottomPadding = Math.max(insets.bottom, 8);
+
     return (
         <Tab.Navigator
             screenOptions={{
                 headerShown: false,
-                tabBarStyle: styles.tabBar,
+                tabBarStyle: [styles.tabBar, { height: 56 + bottomPadding, paddingBottom: bottomPadding }],
                 tabBarActiveTintColor: COLORS.primary,
                 tabBarInactiveTintColor: COLORS.textMuted,
                 tabBarLabelStyle: styles.tabLabel,
-                tabBarItemStyle: styles.tabItem, // Eşit dağıtım için
+                tabBarItemStyle: styles.tabItem,
             }}>
             <Tab.Screen
                 name="Home"
@@ -54,7 +62,7 @@ const BottomTabNavigator = () => {
             {/* Görev Ekle Butonu */}
             <Tab.Screen
                 name="AddTaskPlaceholder"
-                component={HomeStackNavigator} // Dummy component since button is overridden
+                component={EmptyScreen}
                 options={{
                     tabBarLabel: '',
                     tabBarIcon: () => null,
@@ -78,13 +86,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surface,
         borderTopColor: COLORS.border,
         borderTopWidth: 1,
-        height: 64,
-        paddingBottom: 8,
         paddingTop: 8,
         elevation: 0,
     },
     tabItem: {
-        flex: 1, // Tüm butonların eşit alan kaplamasını sağlar
+        flex: 1,
         justifyContent: 'center',
         paddingVertical: 5,
     },
@@ -105,8 +111,9 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginTop: 4, 
+        marginTop: 4,
     },
 });
 
 export default BottomTabNavigator;
+

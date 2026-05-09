@@ -26,6 +26,13 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getTasksByBoard(boardId));
     }
 
+    // GET /api/tasks/user
+    @GetMapping("/user")
+    public ResponseEntity<List<TaskResponse>> getTasksByUser(
+            @RequestParam Long userId) { // TODO: JWT'den alınacak
+        return ResponseEntity.ok(taskService.getTasksByUser(userId));
+    }
+
     // POST /api/tasks
     @PostMapping
     public ResponseEntity<TaskResponse> createTask(

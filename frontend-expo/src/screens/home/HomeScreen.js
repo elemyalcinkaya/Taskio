@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View, Text, ScrollView, StyleSheet, SafeAreaView,
-    ActivityIndicator, TouchableOpacity,
+    ActivityIndicator, TouchableOpacity, TextInput,
 } from 'react-native';
 import { COLORS, STATUS_COLORS } from '../../constants/colors';
 import { boardService } from '../../services/boardService';
@@ -53,7 +53,20 @@ const HomeScreen = ({ navigation }) => {
                     })),
                 );
             }
-            setTasks(merged);
+
+            // Sadece bana ait görevleri göster:
+            // - Atanan kişi yoksa (assignees boş) → oluşturan bensem bana ait
+            // - Atanan kişi varsa → ben atananlar arasındaysam bana ait
+            const myTasks = merged.filter((t) => {
+                if (!t.assignees || t.assignees.length === 0) {
+                    // Atanmamış görev: yaratıcısı bensem bana ait
+                    return t.creator?.id === user.id;
+                }
+                // Atananlar arasında ben varım mı?
+                return t.assignees.some((a) => a.id === user.id);
+            });
+
+            setTasks(myTasks);
         } catch (err) {
             console.error('Tasks load error:', err);
             const msg = err.response?.data?.message || err.message || 'Görevler yüklenemedi.';
