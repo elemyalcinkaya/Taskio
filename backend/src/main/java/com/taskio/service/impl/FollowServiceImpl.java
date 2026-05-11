@@ -1,7 +1,9 @@
 package com.taskio.service.impl;
 
+import com.taskio.dto.response.FollowRequestResponse;
 import com.taskio.dto.response.UserResponse;
 import com.taskio.entity.Follow;
+import com.taskio.entity.Follow.FollowStatus;
 import com.taskio.entity.User;
 import com.taskio.exception.BadRequestException;
 import com.taskio.exception.ResourceNotFoundException;
@@ -28,7 +30,7 @@ public class FollowServiceImpl implements FollowService {
             throw new BadRequestException("Kendinizi takip edemezsiniz.");
         }
         if (followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
-            throw new BadRequestException("Bu kullanıcıyı zaten takip ediyorsunuz.");
+            throw new BadRequestException("Bu kullanıcıya zaten istek gönderilmiş veya takip ediyorsunuz.");
         }
         User follower = userRepository.findById(followerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı."));
@@ -38,6 +40,7 @@ public class FollowServiceImpl implements FollowService {
         followRepository.save(Follow.builder()
                 .follower(follower)
                 .following(following)
+                .status(FollowStatus.PENDING)
                 .build());
     }
 
@@ -50,18 +53,54 @@ public class FollowServiceImpl implements FollowService {
     }
 
     @Override
+    @Transactional
+    public void approveFollow(Long followId, Long currentUserId) {
+        Follow follow = followRepository.findByIdAndFollowingId(followId, currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("İstek bulunamadı."));
+        if (follow.getStatus() != FollowStatus.PENDING) {
+            throw new BadRequestException("Bu istek zaten işleme alınmış.");
+        }
+        follow.setStatus(FollowStatus.ACCEPTED);
+        followRepository.save(follow);
+    }
+
+    @Override
+    @Transactional
+    public void rejectFollow(Long followId, Long currentUserId) {
+        Follow follow = followRepository.findByIdAndFollowingId(followId, currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("İstek bulunamadı."));
+        followRepository.delete(follow);
+    }
+
+    @Override
     public List<UserResponse> getFollowing(Long userId) {
-        return followRepository.findFollowingByUserId(userId)
+        return followRepository.findAcceptedFollowingByUserId(userId)
                 .stream()
-                .map(this::mapToResponse)
+                .map(u -> mapToResponse(u, true))
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<UserResponse> getFollowers(Long userId) {
-        return followRepository.findFollowersByUserId(userId)
+        return followRepository.findAcceptedFollowersByUserId(userId)
                 .stream()
-                .map(this::mapToResponse)
+                .map(u -> mapToResponse(u, true))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<FollowRequestResponse> getPendingRequests(Long userId) {
+        return followRepository.findPendingRequestsForUser(userId)
+                .stream()
+                .map(f -> FollowRequestResponse.builder()
+                        .followId(f.getId())
+                        .requesterId(f.getFollower().getId())
+                        .requesterName(f.getFollower().getName())
+                        .requesterEmail(f.getFollower().getEmail())
+                        .requesterRole(f.getFollower().getRole())
+                        .requesterAvatarUrl(f.getFollower().getAvatarUrl())
+                        .requestedAt(f.getCreatedAt() != null ? f.getCreatedAt().toString() : null)
+                        .build())
                 .collect(Collectors.toList());
     }
 
@@ -69,16 +108,22 @@ public class FollowServiceImpl implements FollowService {
     public List<UserResponse> searchUsers(Long currentUserId, String query) {
         return userRepository.searchUsers(query)
                 .stream()
-                .filter(u -> !u.getId().equals(currentUserId)) // kendini gösterme
+                .filter(u -> !u.getId().equals(currentUserId))
                 .map(u -> {
-                    UserResponse r = mapToResponse(u);
-                    r.setFollowing(followRepository.existsByFollowerIdAndFollowingId(currentUserId, u.getId()));
+                    boolean accepted = followRepository.findByFollowerIdAndFollowingId(currentUserId, u.getId())
+                            .map(f -> f.getStatus() == FollowStatus.ACCEPTED)
+                            .orElse(false);
+                    boolean pending = followRepository.findByFollowerIdAndFollowingId(currentUserId, u.getId())
+                            .map(f -> f.getStatus() == FollowStatus.PENDING)
+                            .orElse(false);
+                    UserResponse r = mapToResponse(u, accepted);
+                    r.setPending(pending);
                     return r;
                 })
                 .collect(Collectors.toList());
     }
 
-    private UserResponse mapToResponse(User user) {
+    private UserResponse mapToResponse(User user, boolean isFollowing) {
         return UserResponse.builder()
                 .id(user.getId())
                 .name(user.getName())
@@ -86,6 +131,7 @@ public class FollowServiceImpl implements FollowService {
                 .role(user.getRole())
                 .avatarUrl(user.getAvatarUrl())
                 .active(user.isActive())
+                .isFollowing(isFollowing)
                 .build();
     }
 }

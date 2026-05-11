@@ -25,4 +25,5 @@ public class UserResponse {
 
     // Takip durumu (arama/listeleme için)
     private boolean isFollowing;
+    private boolean isPending; // Onay bekleyen istek
 }

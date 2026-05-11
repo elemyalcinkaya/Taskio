@@ -9,6 +9,7 @@ import { taskService } from '../../services/taskService';
 import { useAuth } from '../../context/AuthContext';
 import { uiStatusToApi } from '../../utils/taskStatus';
 import { useFocusEffect } from '@react-navigation/native';
+import TaskCard from '../../components/TaskCard';
 
 const COLUMNS = ['To Do', 'In Progress', 'Review', 'Done'];
 
@@ -41,28 +42,26 @@ const HomeScreen = ({ navigation }) => {
         setError(null);
         setLoading(true);
         try {
+            // Tek çağrıyla: kendi panolarındaki + başkasının panosundan atandığı TÜM görevler
+            const allTasks = await taskService.getTasksByUser(user.id);
+
+            // boardName eksik gelebilir — boards listesini de çekip eşleştirelim
             const fetchedBoards = await boardService.getBoards(user.id);
             setBoards(fetchedBoards);
-            const merged = [];
-            for (const b of fetchedBoards) {
-                const boardTasks = await taskService.getTasks(b.id);
-                merged.push(
-                    ...boardTasks.map((t) => ({
-                        ...t,
-                        boardName: b.name,
-                    })),
-                );
-            }
 
-            // Sadece bana ait görevleri göster:
-            // - Atanan kişi yoksa (assignees boş) → oluşturan bensem bana ait
-            // - Atanan kişi varsa → ben atananlar arasındaysam bana ait
-            const myTasks = merged.filter((t) => {
+            const boardMap = {};
+            fetchedBoards.forEach(b => { boardMap[b.id] = b.name; });
+
+            const tasksWithBoard = allTasks.map(t => ({
+                ...t,
+                boardName: t.boardName || boardMap[t.boardId] || '',
+            }));
+
+            // Filtre: boş assignee → yaratıcı bensem göster | dolu → ben atananlardaysam göster
+            const myTasks = tasksWithBoard.filter((t) => {
                 if (!t.assignees || t.assignees.length === 0) {
-                    // Atanmamış görev: yaratıcısı bensem bana ait
                     return t.creator?.id === user.id;
                 }
-                // Atananlar arasında ben varım mı?
                 return t.assignees.some((a) => a.id === user.id);
             });
 
@@ -169,23 +168,11 @@ const HomeScreen = ({ navigation }) => {
                             {/* Görev kartları */}
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {getTasksByStatus(col).map((task) => (
-                                    <TouchableOpacity
+                                    <TaskCard
                                         key={task.id}
-                                        style={styles.taskCard}
-                                        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
-                                        
-                                        {/* Board Etiketi */}
-                                        {task.boardName && (
-                                            <View style={styles.boardBadge}>
-                                                <Text style={styles.boardBadgeText} numberOfLines={1}>
-                                                    {task.boardName}
-                                                </Text>
-                                            </View>
-                                        )}
-                                        
-                                        <Text style={styles.taskTitle}>{task.title}</Text>
-                                        {task.description ? <Text style={styles.taskDesc} numberOfLines={2}>{task.description}</Text> : null}
-                                    </TouchableOpacity>
+                                        task={task}
+                                        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+                                    />
                                 ))}
 
                                 {/* Quick Add Bölümü */}

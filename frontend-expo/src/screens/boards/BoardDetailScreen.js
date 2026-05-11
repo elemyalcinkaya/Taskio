@@ -9,6 +9,7 @@ import { taskService } from '../../services/taskService';
 import { useAuth } from '../../context/AuthContext';
 import { uiStatusToApi } from '../../utils/taskStatus';
 import { useFocusEffect } from '@react-navigation/native';
+import TaskCard from '../../components/TaskCard';
 
 const COLUMNS = ['To Do', 'In Progress', 'Review', 'Done'];
 
@@ -115,13 +116,11 @@ const BoardDetailScreen = ({ route, navigation }) => {
                             </View>
                             <ScrollView showsVerticalScrollIndicator={false}>
                                 {getTasksByStatus(col).map((task) => (
-                                    <TouchableOpacity
+                                    <TaskCard
                                         key={task.id}
-                                        style={styles.taskCard}
-                                        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}>
-                                        <Text style={styles.taskTitle}>{task.title}</Text>
-                                        {task.description ? <Text style={styles.taskDesc} numberOfLines={2}>{task.description}</Text> : null}
-                                    </TouchableOpacity>
+                                        task={task}
+                                        onPress={() => navigation.navigate('TaskDetail', { taskId: task.id })}
+                                    />
                                 ))}
                                 
                                 {/* Quick Add Bölümü */}

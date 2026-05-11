@@ -19,6 +19,8 @@ export const ENDPOINTS = {
     FOLLOW_USER: (id) => `/users/${id}/follow`,
     GET_FOLLOWING: (id) => `/users/${id}/following`,
     GET_FOLLOWERS: (id) => `/users/${id}/followers`,
+    GET_FOLLOW_REQUESTS: '/users/follow-requests',
+    APPROVE_FOLLOW: (followId) => `/users/follow-requests/${followId}/approve`,
 
     // Boards
     GET_BOARDS: '/boards',

@@ -42,4 +42,10 @@ export const taskService = {
     assignUser: async (taskId, targetUserId, userId) => {
         await api.post(ENDPOINTS.ASSIGN_USER(taskId), {}, { params: { targetUserId, userId } });
     },
+
+    // Kullanıcıya ait veya atandığı tüm görevler
+    getTasksByUser: async (userId) => {
+        const response = await api.get(ENDPOINTS.GET_USER_TASKS, { params: { userId } });
+        return mapTaskList(response.data);
+    },
 };

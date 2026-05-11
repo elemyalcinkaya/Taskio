@@ -16,11 +16,18 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     Optional<Follow> findByFollowerIdAndFollowingId(Long followerId, Long followingId);
 
-    // Bir kullanıcının takip ettiği kişiler
-    @Query("SELECT f.following FROM Follow f WHERE f.follower.id = :userId")
-    List<User> findFollowingByUserId(@Param("userId") Long userId);
+    // Kabul edilmiş takip edilen kullanıcılar (görev atama için)
+    @Query("SELECT f.following FROM Follow f WHERE f.follower.id = :userId AND f.status = 'ACCEPTED'")
+    List<User> findAcceptedFollowingByUserId(@Param("userId") Long userId);
 
-    // Bir kullanıcıyı takip edenler
-    @Query("SELECT f.follower FROM Follow f WHERE f.following.id = :userId")
-    List<User> findFollowersByUserId(@Param("userId") Long userId);
+    // Kabul edilmiş takipçiler
+    @Query("SELECT f.follower FROM Follow f WHERE f.following.id = :userId AND f.status = 'ACCEPTED'")
+    List<User> findAcceptedFollowersByUserId(@Param("userId") Long userId);
+
+    // Bekleyen gelen istekler (onay bekliyorum)
+    @Query("SELECT f FROM Follow f WHERE f.following.id = :userId AND f.status = 'PENDING'")
+    List<Follow> findPendingRequestsForUser(@Param("userId") Long userId);
+
+    // Belirli bir followId ile gelen istek
+    Optional<Follow> findByIdAndFollowingId(Long id, Long followingId);
 }

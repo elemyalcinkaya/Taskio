@@ -13,13 +13,30 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     List<Task> findByBoardIdAndStatus(Long boardId, Task.TaskStatus status);
 
-    // Kullanıcının panolarındaki tüm görevler
-    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN t.board.members m WHERE t.board.owner.id = :userId OR m.user.id = :userId")
+    // Kullanıcının panolarındaki tüm görevler + başka panolardan atandığı görevler
+    @Query("""
+        SELECT t FROM Task t
+        WHERE t.board.owner.id = :userId
+           OR EXISTS (SELECT m FROM t.board.members m WHERE m.user.id = :userId)
+           OR EXISTS (SELECT ta FROM t.assignees ta WHERE ta.user.id = :userId)
+        """)
     List<Task> findAllTasksByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT COUNT(DISTINCT t) FROM Task t LEFT JOIN t.board.members m WHERE (t.board.owner.id = :userId OR m.user.id = :userId) AND t.status = :status")
+    @Query("""
+        SELECT COUNT(t) FROM Task t
+        WHERE (t.board.owner.id = :userId
+               OR EXISTS (SELECT m FROM t.board.members m WHERE m.user.id = :userId)
+               OR EXISTS (SELECT ta FROM t.assignees ta WHERE ta.user.id = :userId))
+          AND t.status = :status
+        """)
     int countTasksByUserIdAndStatus(@Param("userId") Long userId, @Param("status") Task.TaskStatus status);
 
-    @Query("SELECT COUNT(DISTINCT t) FROM Task t LEFT JOIN t.board.members m WHERE (t.board.owner.id = :userId OR m.user.id = :userId) AND t.status != :status")
+    @Query("""
+        SELECT COUNT(t) FROM Task t
+        WHERE (t.board.owner.id = :userId
+               OR EXISTS (SELECT m FROM t.board.members m WHERE m.user.id = :userId)
+               OR EXISTS (SELECT ta FROM t.assignees ta WHERE ta.user.id = :userId))
+          AND t.status != :status
+        """)
     int countActiveTasksByUserId(@Param("userId") Long userId, @Param("status") Task.TaskStatus status);
 }

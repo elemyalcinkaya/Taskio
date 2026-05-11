@@ -15,6 +15,7 @@ export const followService = {
         await api.delete(ENDPOINTS.FOLLOW_USER(targetId), { params: { userId } });
     },
 
+    // Sadece ACCEPTED olanlar (görev atama için kullanılır)
     getFollowing: async (userId) => {
         const res = await api.get(ENDPOINTS.GET_FOLLOWING(userId));
         return res.data;
@@ -23,5 +24,21 @@ export const followService = {
     getFollowers: async (userId) => {
         const res = await api.get(ENDPOINTS.GET_FOLLOWERS(userId));
         return res.data;
+    },
+
+    // Gelen onay bekleyen istekler
+    getFollowRequests: async (userId) => {
+        const res = await api.get(ENDPOINTS.GET_FOLLOW_REQUESTS, { params: { userId } });
+        return res.data;
+    },
+
+    // Kabul et
+    approveFollow: async (followId, userId) => {
+        await api.post(ENDPOINTS.APPROVE_FOLLOW(followId), {}, { params: { userId } });
+    },
+
+    // Reddet
+    rejectFollow: async (followId, userId) => {
+        await api.delete(ENDPOINTS.APPROVE_FOLLOW(followId), { params: { userId } });
     },
 };
