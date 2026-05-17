@@ -60,8 +60,22 @@ public class FollowServiceImpl implements FollowService {
         if (follow.getStatus() != FollowStatus.PENDING) {
             throw new BadRequestException("Bu istek zaten işleme alınmış.");
         }
+        // İsteği onayla
         follow.setStatus(FollowStatus.ACCEPTED);
         followRepository.save(follow);
+
+        // Ters yönde bağlantı yoksa otomatik oluştur (çift yönlü bağlantı mantığı)
+        Long requesterId = follow.getFollower().getId();
+        boolean reverseExists = followRepository.existsByFollowerIdAndFollowingId(currentUserId, requesterId);
+        if (!reverseExists) {
+            User currentUser = userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Kullanıcı bulunamadı."));
+            followRepository.save(Follow.builder()
+                    .follower(currentUser)
+                    .following(follow.getFollower())
+                    .status(FollowStatus.ACCEPTED)
+                    .build());
+        }
     }
 
     @Override
@@ -83,6 +97,15 @@ public class FollowServiceImpl implements FollowService {
     @Override
     public List<UserResponse> getFollowers(Long userId) {
         return followRepository.findAcceptedFollowersByUserId(userId)
+                .stream()
+                .map(u -> mapToResponse(u, true))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UserResponse> getConnections(Long userId) {
+        // Her iki yönden ACCEPTED bağlantıları (görev atama için kullanılır)
+        return followRepository.findConnectionsByUserId(userId)
                 .stream()
                 .map(u -> mapToResponse(u, true))
                 .collect(Collectors.toList());

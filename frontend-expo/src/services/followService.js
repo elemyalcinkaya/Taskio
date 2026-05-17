@@ -7,15 +7,16 @@ export const followService = {
         return res.data;
     },
 
+    // Bağlantı isteği gönder
     follow: async (userId, targetId) => {
         await api.post(ENDPOINTS.FOLLOW_USER(targetId), {}, { params: { userId } });
     },
 
+    // Bağlantı isteğini geri çek veya bağlantıyı kes
     unfollow: async (userId, targetId) => {
         await api.delete(ENDPOINTS.FOLLOW_USER(targetId), { params: { userId } });
     },
 
-    // Sadece ACCEPTED olanlar (görev atama için kullanılır)
     getFollowing: async (userId) => {
         const res = await api.get(ENDPOINTS.GET_FOLLOWING(userId));
         return res.data;
@@ -23,6 +24,12 @@ export const followService = {
 
     getFollowers: async (userId) => {
         const res = await api.get(ENDPOINTS.GET_FOLLOWERS(userId));
+        return res.data;
+    },
+
+    // Her iki yönden onaylanmış bağlantılar (görev atama için kullanılır)
+    getConnections: async (userId) => {
+        const res = await api.get(ENDPOINTS.GET_CONNECTIONS(userId));
         return res.data;
     },
 
@@ -42,3 +49,4 @@ export const followService = {
         await api.delete(ENDPOINTS.APPROVE_FOLLOW(followId), { params: { userId } });
     },
 };
+

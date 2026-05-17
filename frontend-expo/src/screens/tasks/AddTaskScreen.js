@@ -73,7 +73,8 @@ const AddTaskScreen = ({ navigation, route }) => {
 
     useEffect(() => {
         if (user?.id) {
-            followService.getFollowing(user.id)
+            // Her iki yönden bağlantılar (getConnections) — görev atama için
+            followService.getConnections(user.id)
                 .then(setFollowingUsers)
                 .catch(() => {});
         }

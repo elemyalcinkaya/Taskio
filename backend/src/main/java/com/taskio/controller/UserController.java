@@ -77,4 +77,10 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> getFollowers(@PathVariable Long userId) {
         return ResponseEntity.ok(followService.getFollowers(userId));
     }
+
+    // GET /api/users/{userId}/connections  → Her iki yönden bağlantılar (görev atama için)
+    @GetMapping("/{userId}/connections")
+    public ResponseEntity<List<UserResponse>> getConnections(@PathVariable Long userId) {
+        return ResponseEntity.ok(followService.getConnections(userId));
+    }
 }

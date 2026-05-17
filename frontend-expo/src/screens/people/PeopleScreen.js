@@ -28,11 +28,11 @@ const PeopleScreen = ({ navigation }) => {
         if (!user?.id) return;
         setListLoading(true);
         try {
-            const [f, r] = await Promise.all([
-                followService.getFollowing(user.id),
+            const [c, r] = await Promise.all([
+                followService.getConnections(user.id),
                 followService.getFollowRequests(user.id),
             ]);
-            setFollowing(f);
+            setFollowing(c);
             setRequests(r);
         } catch (e) {
             console.error('People load error:', e);
@@ -120,9 +120,9 @@ const PeopleScreen = ({ navigation }) => {
     };
 
     const getFollowBtnState = (item) => {
-        if (item.isFollowing) return { label: 'Takipte', style: 'following' };
-        if (item.isPending) return { label: 'İstek Gönderildi', style: 'pending' };
-        return { label: 'Takip Et', style: 'none' };
+        if (item.isFollowing) return { label: 'Bağlı', style: 'following' };
+        if (item.isPending) return { label: 'Beklemede', style: 'pending' };
+        return { label: 'Bağlan', style: 'none' };
     };
 
     const renderSearchItem = ({ item }) => {
@@ -180,7 +180,7 @@ const PeopleScreen = ({ navigation }) => {
             <View style={styles.userInfo}>
                 <Text style={styles.userName}>{item.requesterName}</Text>
                 <Text style={styles.userRole}>{item.requesterRole || item.requesterEmail}</Text>
-                <Text style={styles.requestSubtitle}>Seni takip etmek istiyor</Text>
+                <Text style={styles.requestSubtitle}>Bağlantı isteği gönderdi</Text>
             </View>
             <View style={styles.requestActions}>
                 <TouchableOpacity style={styles.approveBtn} onPress={() => handleApprove(item)}>
@@ -220,7 +220,7 @@ const PeopleScreen = ({ navigation }) => {
                 >
                     <Feather name="users" size={14} color={tab === 'following' ? COLORS.primary : COLORS.textMuted} />
                     <Text style={[styles.tabText, tab === 'following' && styles.activeTabText]}>
-                        Takip{following.length > 0 ? ` (${following.length})` : ''}
+                        Bağlantılar{following.length > 0 ? ` (${following.length})` : ''}
                     </Text>
                 </TouchableOpacity>
 
@@ -265,7 +265,7 @@ const PeopleScreen = ({ navigation }) => {
                     <View style={styles.infoBox}>
                         <Feather name="info" size={14} color={COLORS.primary} />
                         <Text style={styles.infoText}>
-                            Kişi isteğini onayladığında görevlere atayabilirsin.
+                            Bağlantı isteği gönder; karşı taraf onayladığında ikisi de birbirini görevlere ekleyebilir.
                         </Text>
                     </View>
                     {loading ? (
@@ -300,9 +300,9 @@ const PeopleScreen = ({ navigation }) => {
                     ) : following.length === 0 ? (
                         <View style={styles.emptyState}>
                             <Feather name="users" size={48} color={COLORS.textMuted} />
-                            <Text style={styles.emptyTitle}>Onaylı takibiniz yok</Text>
+                            <Text style={styles.emptyTitle}>Henüz bağlantınız yok</Text>
                             <Text style={styles.emptySubtitle}>
-                                Ara sekmesinden istek gönder; karşı taraf onayladığında buraya gelir
+                                Ara sekmesinden istek gönder; karşı taraf onayladığında burada görünür
                             </Text>
                         </View>
                     ) : (
